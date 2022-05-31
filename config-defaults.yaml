@@ -1,0 +1,43 @@
+env: 
+    desc: Environment to train or test on
+    value: gridworld
+rep: 
+    desc: Non-parametric representation observed by the agent
+    value: identity
+policy: 
+    desc: Structure of h_theta, obs to action preferences
+    value: tabular
+action_selection:
+    desc: pi, h_theta to probabilities
+    value: softmax
+learning_rule:
+    desc: Rule for updating h_theta based on trajectory so far
+    value: reinforce
+learning_rate:
+    desc: Learning rate
+    value: 0.05
+optimizer_name:
+    desc: Optimization algorithm to use
+    value: sgd
+learning_rate_discount:
+    desc: Factor by which to decrease learning rate
+    value: 1.0
+n_step_n:
+    desc: Value of n for n-step SARSA/Q
+    value: 1
+lambduh:
+    desc: Value of lambda in SARSA/Q lambda
+    value: 0.
+epsilon:
+    desc: Epsilon in epsilon-greedy
+    value: 0.05
+softmax_temp:
+    desc: Softmax temperature for softmax action selection
+    value: 1.
+num_episodes:
+    desc: Number of episodes to train for
+    value: 1000
+discount_updates:
+    desc: Whether or not to discount policy gradient updates by gamma
+    value: false
+    
