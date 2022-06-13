@@ -2,6 +2,7 @@ import wandb
 import argparse
 import ray
 import psutil
+import time
 from tqdm import tqdm
 import numpy as np
 # import jax.numpy as jnp
@@ -19,7 +20,7 @@ from agent import new_agent
 def main(args):
     # Might eventually want to move away from args to just configs?
     # TODO: standardize strings in config
-    run = wandb.init(project='test', reinit=True)
+    run = wandb.init(project=args.wandb_project, reinit=True)
     wandb.config.update(vars(args), allow_val_change=True)
     # wandb.log(vars(args))
     # How do we get dimensions of h? Well, from the size of rep's output,
@@ -27,7 +28,11 @@ def main(args):
     # Might want to make max_steps an arg at some point
     env = new_env(wandb.config.env)
     rep_fn = new_rep_fn(wandb.config.rep, env.obs_dim)
-    alg_hyperparams = {'lr': wandb.config.learning_rate, 'n': wandb.config.n_step_n, 'lambda': wandb.config.lambduh, 'discount_updates': wandb.config.discount_updates} # TODO add ANN params as well
+    alg_hyperparams = {'lr': wandb.config.learning_rate, 
+            'n': wandb.config.n_step_n, 
+            'lambda': wandb.config.lambduh, 
+            'discount_updates': wandb.config.discount_updates,
+            'online': wandb.config.online} # TODO add ANN params as well
     pi_hyperparams = {'temperature': wandb.config.softmax_temp, 'epsilon': wandb.config.epsilon}
     # ANN params mean that these aren't just algorithm hyperparameters... they're also for theta/h, and gradient descent
     # Which also raises the question of how we'll treat h in the case of ANNs - the forward function on a Flax net or whatever?
@@ -41,13 +46,17 @@ def main(args):
     # TODO allow criterion-based stopping (maybe something for the agent to determine?)
     num_episodes = wandb.config.num_episodes
     rets_by_ep, n_steps_by_ep = np.zeros(num_episodes, dtype=float), np.zeros(num_episodes, dtype=int)
-    for episode in tqdm(range(num_episodes)):
+    for episode in tqdm(range(num_episodes), mininterval=10.0):
         ret, n_steps = train(agent, rep_fn, env)
+        #if args.num_trials < 5 or psutil.cpu_count() < 5:
         wandb.log({'num_steps':n_steps, 'ret':ret})
         rets_by_ep[episode] = ret
         n_steps_by_ep[episode] = n_steps
         agent.reset()
         env.reset()
+    #if args.num_trials >= 5 and psutil.cpu_count() >= 5:
+        #wandb.log({
+    #wandb.log({'num_steps': n_steps_by_ep, 'ret': rets_by_ep})
     wandb.log({'end_params': agent.theta})
     print(agent.theta)
     env.display_policy(agent.theta)
@@ -71,6 +80,8 @@ def parse_args():
     parser.add_argument('-du', '--discount-updates', type=bool, help="Whether or not to use gamma in policy gradient")
     parser.add_argument('-ne', '--num-episodes', type=int, help="Number of training episodes")
     parser.add_argument('-on', '--optimizer-name', type=str, help="Name of optimizer to use")
+    parser.add_argument('-wp', '--wandb-project', type=str, default='uncategorized', help="WAndB project name")
+    parser.add_argument('-o', '--online', type=bool, help="Whether or not learning algorithm updates every step")
     args = parser.parse_args()
     return args
 
@@ -83,24 +94,28 @@ def train(agent, rep_fn, env):
     for step in range(max_steps):
         action = agent.get_action(rep)
         obs, reward, done = env.step(action)
-        agent.update(reward)
+        agent.update(reward, done)
         rep = rep_fn.get_rep(obs)
         ret += (env.gamma**step)*reward
         if done:
-            wandb.log({'num_steps':step+1})
             return ret, step
         
 if __name__ == "__main__":
     args = parse_args()
     if args.num_trials > 1:
         num_trials_remaining = args.num_trials
+        print("Number of cpus: ", psutil.cpu_count())
         while num_trials_remaining > 0:
+            start = time.time()
             num_threads = min(psutil.cpu_count()-1, num_trials_remaining)
             ray.init(num_cpus=num_threads)
             ray.get([main.remote(args) for i in range(num_threads)])
             num_trials_remaining -= num_threads
+            ray.shutdown()
+            print("num trials remaining: ", num_trials_remaining)
+            print("time taken: ", time.time()-start)
     else:
-        main(args)
+        ray.get(main.remote(args))
     
     
     # some_vars = {'var1': 3.7, 'var2': False, 'var3': 'yo'}

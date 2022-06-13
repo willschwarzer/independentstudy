@@ -26,14 +26,16 @@ class TD(Agent):
     # get estimate of gradient of MSE wrt params
     
 class REINFORCE(Agent):
-    def __init__(self, theta, h, pi, gamma, optim, discount_updates):
+    def __init__(self, theta, h, pi, gamma, optim, discount_updates, online):
         super(REINFORCE, self).__init__(theta, h, pi, gamma, optim)
         self.discount_updates = discount_updates
         self.trace = torch.zeros_like(theta)
+        self.theta_grad_accumulant = torch.zeros_like(theta)
+        self.online = online
         
     def get_action(self, obs):
         if self.theta.grad is not None:
-            self.theta.grad.zero_()
+            self.optim.zero_grad()
         action_probs = self.__get_action_probs__(obs, self.theta)
         action = torch.multinomial(action_probs, 1).squeeze()
         log_action_prob = torch.log(action_probs[action])
@@ -47,15 +49,18 @@ class REINFORCE(Agent):
 #     def __get_action_prob_log__(self, obs, theta, action):
 #         return torch.log(__get_action_probs__(self, obs, theta))[action]
     
-    def update(self, r):
+    def update(self, r, done):
         with torch.no_grad():
             if not self.discount_updates:
-                self.theta.grad = -r*self.trace
-                self.optim.step()
+                self.theta_grad_accumulant = -r*self.trace
                 self.trace *= self.gamma
             else:
-                self.theta.grad = -r*(self.gamma**self.step)*self.trace
+                self.theta_grad_accumulant = -r*(self.gamma**self.step)*self.trace
+
+            if self.online or done:
+                self.theta.grad = torch.copy(self.theta_grad_accumulant)
                 self.optim.step()
+                self.theta_grad_accumulant *= 0
         self.step += 1
         return
     
@@ -90,7 +95,7 @@ def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_
     elif (''.join([i for i in alg_name if i.isalpha()])).lower() == 'qlearning':
         return TD(theta, h, pi, False, alg_hyperparams['n'], alg_hyperparams['lambda'])
     elif alg_name.lower() == 'reinforce':
-        return REINFORCE(theta, h, pi, gamma, optim, alg_hyperparams['discount_updates'])
+        return REINFORCE(theta, h, pi, gamma, optim, alg_hyperparams['discount_updates'], alg_hyperparams['online'])
     else:
         raise NotImplementedError
         

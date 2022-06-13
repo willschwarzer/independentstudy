@@ -15,10 +15,10 @@ learning_rule:
     value: reinforce
 learning_rate:
     desc: Learning rate
-    value: 0.05
+    value: 0.001
 optimizer_name:
     desc: Optimization algorithm to use
-    value: sgd
+    value: adam
 learning_rate_discount:
     desc: Factor by which to decrease learning rate
     value: 1.0
@@ -36,8 +36,10 @@ softmax_temp:
     value: 1.
 num_episodes:
     desc: Number of episodes to train for
-    value: 1000
+    value: 10000
 discount_updates:
     desc: Whether or not to discount policy gradient updates by gamma
     value: false
-    
+online:
+    desc: Whether or not learning algorithm updates at every step
+    value: true
