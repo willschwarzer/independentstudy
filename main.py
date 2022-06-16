@@ -82,6 +82,8 @@ def parse_args():
     parser.add_argument('-on', '--optimizer-name', type=str, help="Name of optimizer to use")
     parser.add_argument('-wp', '--wandb-project', type=str, default='uncategorized', help="WAndB project name")
     parser.add_argument('-o', '--online', type=bool, help="Whether or not learning algorithm updates every step")
+    parser.add_argument('-op', '--on-policy', type=bool, help="Whether TD methods are SARSA or Q-learning")
+    parser.add_argument('-ex', '--expected', type=bool, help="whether SARSA is expected SARSA or original")
     args = parser.parse_args()
     return args
 
@@ -94,7 +96,7 @@ def train(agent, rep_fn, env):
     for step in range(max_steps):
         action = agent.get_action(rep)
         obs, reward, done = env.step(action)
-        agent.update(reward, done)
+        agent.update(obs, reward, done)
         rep = rep_fn.get_rep(obs)
         ret += (env.gamma**step)*reward
         if done:

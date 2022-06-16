@@ -9,10 +9,10 @@ policy:
     value: tabular
 action_selection:
     desc: pi, h_theta to probabilities
-    value: softmax
+    value: epsilon-greedy
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: reinforce
+    value: td
 learning_rate:
     desc: Learning rate
     value: 0.001
@@ -43,3 +43,9 @@ discount_updates:
 online:
     desc: Whether or not learning algorithm updates at every step
     value: true
+on_policy:
+    desc: Whether TD methods use SARSA or Q-learning
+    value: true
+expected:
+    desc: Whether SARSA is standard SARSA or expected SARSA
+    value: false

@@ -16,14 +16,61 @@ class Agent():
     
     
 class TD(Agent):
-    def __init__(self, theta, h, pi, gamma, lr, on_policy, n, lambduh):
+    def __init__(self, theta, h, pi, gamma, lr, on_policy, expected, n, lambduh):
         super(TD, self).__init__(theta, h, pi, gamma, lr)
         # on_policy: indicates q vs sarsa
         self.on_policy = on_policy
+        self.expected = expected
         self.n = n
         self.lambduh = lambduh
+        self.rt = None
+        self.st = None
+        self.at = None
+        
+        if self.on_policy and self.expected:
+            raise Exception("That doesn't make sense.")
         # self.grads = 
     # get estimate of gradient of MSE wrt params
+    
+    def get_action(self, obs):
+        # When updating, obs = s_{t+1}, so we need to observe qs[action], i.e. q(s_{t+1}, a_{t+1})
+        self.optim.zero_grad()
+        qs = self.h(self.theta, obs)
+        action_probs = self.pi(qs)
+        action = torch.multinomial(action_probs, 1).squeeze()
+        if self.on_policy and not self.expected:
+            self.__update__(qs[action])
+        qs[action].backward()
+        self.trace += self.theta.grad
+        self.st = obs
+        self.at = action
+        return action
+    
+    def update(self, obs, r, done):
+        # obs = s_{t+1}, self.st = s_t, self.at = a_t, self.rt = r_{t-1}
+        # r = r_t
+        self.rt = r
+        if not self.on_policy:
+            qs = self.h(self.theta, obs)
+            qp = torch.max(qs)
+            self.__update__(qp)
+            pass
+        elif expected:
+            qs = self.h(self.theta, obs)
+            action_probs = self.pi(qs)
+            qp = torch.dot(qs, action_probs)
+            self.__update__(qp)
+        elif done:
+            qp = 0
+            self.__update__(qp)
+    
+    def __update__(self, qp):
+        with torch.no_grad():
+            delta = self.rt + self.gamma*qp - self.h(self.theta, self.st)[self.at]
+            self.theta.grad = -delta*self.trace
+            optim.step()
+            self.trace *= self.lambduh*self.gamma
+        
     
 class REINFORCE(Agent):
     def __init__(self, theta, h, pi, gamma, optim, discount_updates, online):
@@ -49,7 +96,7 @@ class REINFORCE(Agent):
 #     def __get_action_prob_log__(self, obs, theta, action):
 #         return torch.log(__get_action_probs__(self, obs, theta))[action]
     
-    def update(self, r, done):
+    def update(self, obs, r, done):
         with torch.no_grad():
             if not self.discount_updates:
                 self.theta_grad_accumulant = -r*self.trace
