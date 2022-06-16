@@ -26,6 +26,7 @@ class TD(Agent):
         self.rt = None
         self.st = None
         self.at = None
+        self.trace = torch.zeros_like(self.theta)
         
         if self.on_policy and self.expected:
             raise Exception("That doesn't make sense.")
@@ -34,11 +35,10 @@ class TD(Agent):
     
     def get_action(self, obs):
         # When updating, obs = s_{t+1}, so we need to observe qs[action], i.e. q(s_{t+1}, a_{t+1})
-        self.optim.zero_grad()
         qs = self.h(self.theta, obs)
         action_probs = self.pi(qs)
         action = torch.multinomial(action_probs, 1).squeeze()
-        if self.on_policy and not self.expected:
+        if self.on_policy and not self.expected and self.step > 0:
             self.__update__(qs[action])
         qs[action].backward()
         self.trace += self.theta.grad
@@ -55,7 +55,7 @@ class TD(Agent):
             qp = torch.max(qs)
             self.__update__(qp)
             pass
-        elif expected:
+        elif self.expected:
             qs = self.h(self.theta, obs)
             action_probs = self.pi(qs)
             qp = torch.dot(qs, action_probs)
@@ -63,13 +63,19 @@ class TD(Agent):
         elif done:
             qp = 0
             self.__update__(qp)
+        self.step += 1
     
     def __update__(self, qp):
         with torch.no_grad():
             delta = self.rt + self.gamma*qp - self.h(self.theta, self.st)[self.at]
             self.theta.grad = -delta*self.trace
-            optim.step()
+            self.optim.step()
+            self.optim.zero_grad()
             self.trace *= self.lambduh*self.gamma
+            
+    def reset(self):
+        self.trace = torch.zeros_like(self.theta)
+        self.step = 0
         
     
 class REINFORCE(Agent):
@@ -137,10 +143,8 @@ def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_
     elif optim_name.lower() == 'adam':
         optim = torch.optim.Adam([theta], lr=alg_hyperparams['lr'])
     
-    if alg_name.lower() == 'sarsa':
-        return TD(theta, h, pi, True, alg_hyperparams['n'], alg_hyperparams['lambda'])
-    elif (''.join([i for i in alg_name if i.isalpha()])).lower() == 'qlearning':
-        return TD(theta, h, pi, False, alg_hyperparams['n'], alg_hyperparams['lambda'])
+    if alg_name.lower() == 'td':
+        return TD(theta, h, pi, gamma, optim, alg_hyperparams['on_policy'], alg_hyperparams['expected'], alg_hyperparams['n'], alg_hyperparams['lambda'])
     elif alg_name.lower() == 'reinforce':
         return REINFORCE(theta, h, pi, gamma, optim, alg_hyperparams['discount_updates'], alg_hyperparams['online'])
     else:

@@ -25,7 +25,7 @@ learning_rate_discount:
 n_step_n:
     desc: Value of n for n-step SARSA/Q
     value: 1
-lambduh:
+lambda:
     desc: Value of lambda in SARSA/Q lambda
     value: 0.
 epsilon:

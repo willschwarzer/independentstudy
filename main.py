@@ -32,7 +32,9 @@ def main(args):
             'n': wandb.config.n_step_n, 
             'lambda': wandb.config.lambduh, 
             'discount_updates': wandb.config.discount_updates,
-            'online': wandb.config.online} # TODO add ANN params as well
+            'online': wandb.config.online,
+            'on_policy': wandb.config.on_policy,
+            'expected': wandb.config.expected} # TODO add ANN params as well
     pi_hyperparams = {'temperature': wandb.config.softmax_temp, 'epsilon': wandb.config.epsilon}
     # ANN params mean that these aren't just algorithm hyperparameters... they're also for theta/h, and gradient descent
     # Which also raises the question of how we'll treat h in the case of ANNs - the forward function on a Flax net or whatever?
@@ -46,7 +48,8 @@ def main(args):
     # TODO allow criterion-based stopping (maybe something for the agent to determine?)
     num_episodes = wandb.config.num_episodes
     rets_by_ep, n_steps_by_ep = np.zeros(num_episodes, dtype=float), np.zeros(num_episodes, dtype=int)
-    for episode in tqdm(range(num_episodes), mininterval=10.0):
+    tqdm_display_interval = 0. if args.num_trials == 1 else 10.
+    for episode in tqdm(range(num_episodes), mininterval=tqdm_display_interval):
         ret, n_steps = train(agent, rep_fn, env)
         #if args.num_trials < 5 or psutil.cpu_count() < 5:
         wandb.log({'num_steps':n_steps, 'ret':ret})
@@ -83,7 +86,8 @@ def parse_args():
     parser.add_argument('-wp', '--wandb-project', type=str, default='uncategorized', help="WAndB project name")
     parser.add_argument('-o', '--online', type=bool, help="Whether or not learning algorithm updates every step")
     parser.add_argument('-op', '--on-policy', type=bool, help="Whether TD methods are SARSA or Q-learning")
-    parser.add_argument('-ex', '--expected', type=bool, help="whether SARSA is expected SARSA or original")
+    parser.add_argument('-ex', '--expected', type=bool, help="Whether SARSA is expected SARSA or original")
+    parser.add_argument('-la', '--lambduh', type=float)
     args = parser.parse_args()
     return args
 
