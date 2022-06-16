@@ -58,7 +58,7 @@ class REINFORCE(Agent):
                 self.theta_grad_accumulant = -r*(self.gamma**self.step)*self.trace
 
             if self.online or done:
-                self.theta.grad = torch.copy(self.theta_grad_accumulant)
+                self.theta.grad = torch.clone(self.theta_grad_accumulant)
                 self.optim.step()
                 self.theta_grad_accumulant *= 0
         self.step += 1
