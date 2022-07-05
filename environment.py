@@ -15,7 +15,7 @@ class Environment:
         return
     def step(self, action):
         self.current_step += 1
-        self.update_state(self, action)
+        self.update_state(action)
         observation = self.get_observation()
         reward_features = self.get_reward_features()
         reward = np.dot(self.reward_weights, reward_features)
@@ -46,6 +46,9 @@ class Gridworld(Environment):
     def __init__(self):
         super(Gridworld, self).__init__()
         self.obs_dim = (5, 5)
+        # self.obs_bounds = np.reshape(np.repeat(np.array([0, 1], dtype=float), 25), (5, 5, 2))
+        self.obs_bounds = None
+        # wrong dimensions right now, needs to be other way around (dimension 2 first)
         self.num_actions = 4
         self.state = (0, 0)
         self.reward_weights = np.array([-10, 10], dtype=float)
@@ -134,7 +137,44 @@ class Gridworld(Environment):
             print()
 
 class MountainCar(Environment):
-    pass
+    def __init__(self):
+        super().__init__()
+        self._initial_state = np.array([-0.5, 0], dtype=float)
+        self.obs_dim = 2
+        self.obs_bounds = np.array([[-1.2, -0.07], [0.5, 0.07]], dtype=float)
+        self.num_actions = 3
+        self.actions = np.array([-1, 0, 1], dtype=float)
+        self.state = np.copy(self._initial_state)
+        self.reward_weights = np.array([-1], dtype=float)
+        self.goal = 0.5
+        self.x_min = -1.2
+        self.x_max = self.goal
+        self.v_min = -0.07
+        self.v_max = 0.07
+        self.gamma = 1.
+        self.max_steps = 1000
+        return
+    
+    def get_reward_features(self):
+        return np.array([self.state[0] != self.goal], dtype=bool)
+    
+    def update_state(self, action):
+        action_effect = self.actions[action]
+        self.state[1] += 0.001*action_effect - 0.0025*np.cos(3.0*self.state[0])
+        self.state[1] = np.clip(self.state[1], self.v_min, self.v_max)
+        self.state[0] += self.state[1]
+        self.state[0] = np.clip(self.state[0], self.x_min, self.x_max)
+        return
+            
+    def reset(self):
+        self.state = np.copy(self._initial_state)
+        return
+    
+    def is_terminal(self):
+        return self.state[0] >= self.goal
+    
+    def get_observation(self):
+        return self.state
 
 class CartPole(Environment):
     pass
@@ -158,6 +198,8 @@ class GymEnv(gym.Env):
 def new_env(env_name):
     if env_name.lower() == "gridworld":
         return Gridworld()
+    elif (''.join([i for i in env_name if i.isalpha()])).lower() == 'mountaincar':
+        return MountainCar()
     else:
         raise NotImplementedError('Not yet implemented')
         

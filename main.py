@@ -27,7 +27,8 @@ def main(args):
     # as well as the number of actions
     # Might want to make max_steps an arg at some point
     env = new_env(wandb.config.env)
-    rep_fn = new_rep_fn(wandb.config.rep, env.obs_dim)
+    rep_hyperparams = {'d': wandb.config.rep_d}
+    rep_fn = new_rep_fn(wandb.config.rep, env.obs_dim, env.obs_bounds, rep_hyperparams)
     alg_hyperparams = {'lr': wandb.config.learning_rate, 
             'n': wandb.config.n_step_n, 
             'lambda': wandb.config.lambduh, 
@@ -84,7 +85,7 @@ def parse_args():
     parser.add_argument('-ne', '--num-episodes', type=int, help="Number of training episodes")
     parser.add_argument('-on', '--optimizer-name', type=str, help="Name of optimizer to use")
     parser.add_argument('-wp', '--wandb-project', type=str, default='uncategorized', help="WAndB project name")
-    parser.add_argument('-o', '--online', type=bool, help="Whether or not learning algorithm updates every step")
+    parser.add_argument('-o', '--online', action=argparse.BooleanOptionalAction, help="Whether or not learning algorithm updates every step")
     parser.add_argument('-op', '--on-policy', type=bool, help="Whether TD methods are SARSA or Q-learning")
     parser.add_argument('-ex', '--expected', type=bool, help="Whether SARSA is expected SARSA or original")
     parser.add_argument('-la', '--lambduh', type=float)
@@ -105,6 +106,7 @@ def train(agent, rep_fn, env):
         ret += (env.gamma**step)*reward
         if done:
             return ret, step
+    return ret, step
         
 if __name__ == "__main__":
     args = parse_args()

@@ -127,7 +127,8 @@ def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_
         theta = torch.zeros((*theta_dims['input'], theta_dims['output']), dtype=float, requires_grad=True)
     elif policy_name.lower() == 'linear':
         h = h_linear
-        theta = torch.zeros((*theta_dims['input'], theta_dims['output']), dtype=float, requires_grad=True)
+        # NOTE: just got rid of the star here, assuming you'll never have dimension of dimensions in linear
+        theta = torch.zeros((theta_dims['input'], theta_dims['output']), dtype=float, requires_grad=True)
     else:
         raise NotImplementedError
     
@@ -156,7 +157,8 @@ def h_tabular(theta, obs):
 def h_linear(theta, obs):
     # theta: (rep_size, |A|)
     # obs: (rep_size)
-    return torch.squeeze(torch.unsqueeze(obs, 0) @ theta) # (|A|)
+    torch_obs = torch.DoubleTensor(obs)
+    return torch.squeeze(torch.unsqueeze(torch_obs, 0) @ theta) # (|A|)
 
 def pi_epsilon_greedy(epsilon):
     def pi_epsilon_greedy_curried(preferences):

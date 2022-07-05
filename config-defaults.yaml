@@ -6,13 +6,13 @@ rep:
     value: identity
 policy: 
     desc: Structure of h_theta, obs to action preferences
-    value: tabular
+    value: linear
 action_selection:
     desc: pi, h_theta to probabilities
-    value: epsilon-greedy
+    value: softmax
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: td
+    value: reinforce
 learning_rate:
     desc: Learning rate
     value: 0.001
@@ -25,7 +25,7 @@ learning_rate_discount:
 n_step_n:
     desc: Value of n for n-step SARSA/Q
     value: 1
-lambda:
+lambduh:
     desc: Value of lambda in SARSA/Q lambda
     value: 0.
 epsilon:
@@ -49,3 +49,6 @@ on_policy:
 expected:
     desc: Whether SARSA is standard SARSA or expected SARSA
     value: false
+rep_d:
+    desc: Dimension of base
+    value: 5
