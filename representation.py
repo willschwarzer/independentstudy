@@ -24,13 +24,13 @@ class FourierRep(StateRep):
         obs_expanded = np.expand_dims(obs, 1)
         return np.cos(np.squeeze(self.coefficients @ obs_expanded))
 
-class TabularRep(StateRep):
-    def __init__(self):
-        # TODO
-        pass
+class DiscreteRep(StateRep):
+    def __init__(self, bounds, d):
+        self.bins = np.linspace(bounds[0], bounds[1], d).transpose()
+        self.rep_dim = (d,) * len(bounds)
     def get_rep(self, obs):
-        # TODO
-        pass
+        ret = tuple([np.digitize(obs[i], self.bins[i]) for i in range(len(obs))])
+        return ret
     
 class IdentityRep(StateRep):
     def __init__(self, obs_dim):
@@ -44,5 +44,7 @@ def new_rep_fn(name, obs_dim, obs_bounds, rep_hyperparams):
         return IdentityRep(obs_dim)
     elif name.lower() == "fourier":
         return FourierRep(obs_dim, obs_bounds, rep_hyperparams['d'])
+    elif name.lower() == "discrete":
+        return DiscreteRep(obs_bounds, rep_hyperparams['d'])
     else:
         raise NotImplementedError

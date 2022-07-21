@@ -36,6 +36,7 @@ class TD(Agent):
     def get_action(self, obs):
         # When updating, obs = s_{t+1}, so we need to observe qs[action], i.e. q(s_{t+1}, a_{t+1})
         qs = self.h(self.theta, obs)
+        # Make sure epsilon greedy doesn't throw off autograd
         action_probs = self.pi(qs)
         action = torch.multinomial(action_probs, 1).squeeze()
         if self.on_policy and not self.expected and self.step > 0:
@@ -74,6 +75,7 @@ class TD(Agent):
             self.trace *= self.lambduh*self.gamma
             
     def reset(self):
+        # print(self.theta)
         self.trace = torch.zeros_like(self.theta)
         self.step = 0
         
@@ -163,7 +165,9 @@ def h_linear(theta, obs):
 def pi_epsilon_greedy(epsilon):
     def pi_epsilon_greedy_curried(preferences):
         probs = torch.zeros_like(preferences) + epsilon/len(preferences)
-        probs[torch.argmax(preferences)] += 1-epsilon+epsilon/len(preferences)
+        # Check this line, also do equal argmax
+        max_idxs = torch.where(preferences == preferences.max())[0]
+        probs[max_idxs] += (1-epsilon)/len(max_idxs)
         return probs
     return pi_epsilon_greedy_curried
 

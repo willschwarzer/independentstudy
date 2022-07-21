@@ -1,24 +1,24 @@
 env: 
     desc: Environment to train or test on
-    value: gridworld
+    value: mountaincar
 rep: 
     desc: Non-parametric representation observed by the agent
-    value: identity
+    value: fourier
 policy: 
     desc: Structure of h_theta, obs to action preferences
     value: linear
 action_selection:
     desc: pi, h_theta to probabilities
-    value: softmax
+    value: epsilon_greedy
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: reinforce
+    value: td
 learning_rate:
     desc: Learning rate
-    value: 0.001
+    value: 0.1
 optimizer_name:
     desc: Optimization algorithm to use
-    value: adam
+    value: sgd
 learning_rate_discount:
     desc: Factor by which to decrease learning rate
     value: 1.0

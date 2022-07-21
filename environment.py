@@ -175,6 +175,9 @@ class MountainCar(Environment):
     
     def get_observation(self):
         return self.state
+    
+    def display_policy(self, policy):
+        return
 
 class CartPole(Environment):
     pass
