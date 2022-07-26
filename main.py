@@ -50,14 +50,17 @@ def main(args):
     num_episodes = wandb.config.num_episodes
     rets_by_ep, n_steps_by_ep = np.zeros(num_episodes, dtype=float), np.zeros(num_episodes, dtype=int)
     tqdm_display_interval = 0. if args.num_trials == 1 else 10.
-    for episode in tqdm(range(num_episodes), mininterval=tqdm_display_interval):
-        ret, n_steps = train(agent, rep_fn, env)
-        #if args.num_trials < 5 or psutil.cpu_count() < 5:
-        wandb.log({'num_steps':n_steps, 'ret':ret})
-        rets_by_ep[episode] = ret
-        n_steps_by_ep[episode] = n_steps
-        agent.reset()
-        env.reset()
+    with tqdm(range(num_episodes), unit="episode", mininterval=tqdm_display_interval) as tepisode:
+        for episode in tepisode:
+            ret, n_steps = train(agent, rep_fn, env)
+            #if args.num_trials < 5 or psutil.cpu_count() < 5:
+            wandb.log({'num_steps':n_steps, 'ret':ret})
+            rets_by_ep[episode] = ret
+            n_steps_by_ep[episode] = n_steps
+            tepisode.set_postfix({"Return": ret})
+            agent.reset()
+            env.reset()
+        
     #if args.num_trials >= 5 and psutil.cpu_count() >= 5:
         #wandb.log({
     #wandb.log({'num_steps': n_steps_by_ep, 'ret': rets_by_ep})
