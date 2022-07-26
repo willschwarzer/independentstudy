@@ -1,15 +1,15 @@
 env: 
     desc: Environment to train or test on
-    value: mountaincar
+    value: cartpole
 rep: 
     desc: Non-parametric representation observed by the agent
-    value: fourier
+    value: discrete
 policy: 
     desc: Structure of h_theta, obs to action preferences
-    value: linear
+    value: tabular
 action_selection:
     desc: pi, h_theta to probabilities
-    value: epsilon_greedy
+    value: softmax
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
     value: td
@@ -51,4 +51,4 @@ expected:
     value: false
 rep_d:
     desc: Dimension of base
-    value: 5
+    value: 4

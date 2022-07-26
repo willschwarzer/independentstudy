@@ -168,6 +168,7 @@ class MountainCar(Environment):
             
     def reset(self):
         self.state = np.copy(self._initial_state)
+        self.step = 0
         return
     
     def is_terminal(self):
@@ -180,7 +181,61 @@ class MountainCar(Environment):
         return
 
 class CartPole(Environment):
-    pass
+    def __init__(self):
+        super().__init__()
+        self._initial_state = np.array([0, 0, 0, 0], dtype=float) # x, v, theta, omega
+        self.obs_dim = 4
+        self.obs_bounds = np.array([[-2.4, -10, -np.pi/12, -np.pi], [2.4, 10, np.pi/12, np.pi]], dtype=float)
+        self.num_actions = 2
+        self.actions = np.array([-1, 1], dtype=float)
+        self.state = np.copy(self._initial_state)
+        self.reward_weights = np.array([1], dtype=float)
+        self.gamma = 1.
+        self.dt_base = 0.02
+        self.sim_steps_per_t = 1
+        self.dt = 0.02/self.sim_steps_per_t
+        self.max_steps = 20/self.dt_base + 10 # Not sure why the 10 here; just do 20 secs?
+        self.l = 0.5
+        self.g = 9.8
+        self.muc = 0.0005
+        self.mup = 0.000002
+        self.m = 0.1
+        self.mc = 1
+        
+    def get_reward_features(self):
+        return np.array([True], dtype=bool)
+    
+    def update_state(self, action):
+        action_effect = self.actions[action]
+        x = self.state[0]
+        v = self.state[1]
+        theta = self.state[2]
+        omega = self.state[3]
+        force = action_effect * 10. # I'm not quite sure why this is 10
+        for sim_step in range(self.sim_steps_per_t):
+            domega = (self.g*np.sin(theta) + np.cos(theta)*(self.muc*np.sign(v) - force - self.m*self.l*(omega**2)*np.sin(theta)) / (self.m + self.mc) - self.mup*omega / (self.m*self.l)) / (self.l*(4.0 / 3.0 - self.m / (self.m + self.mc)*(np.cos(theta)**2)))
+            a = (force + self.m*self.l*((omega**2)*np.sin(theta) - domega*np.cos(theta)) - self.muc*np.sign(v)) / (self.m + self.mc)
+            omega += self.dt*domega
+            v += self.dt*a
+            theta += self.dt*omega
+            x += self.dt*v
+        self.state[:] = [x, v, theta, omega]
+        np.clip(self.state, self.obs_bounds[0], self.obs_bounds[1])
+        return
+            
+    def reset(self):
+        self.state = np.copy(self._initial_state)
+        self.current_step = 0
+        return
+    
+    def is_terminal(self):
+        return 
+    
+    def get_observation(self):
+        return self.state
+    
+    def display_policy(self, policy):
+        return
 
 class Acrobot(Environment):
     pass
@@ -203,6 +258,8 @@ def new_env(env_name):
         return Gridworld()
     elif (''.join([i for i in env_name if i.isalpha()])).lower() == 'mountaincar':
         return MountainCar()
+    elif (''.join([i for i in env_name if i.isalpha()])).lower() == 'cartpole':
+        return CartPole()
     else:
         raise NotImplementedError('Not yet implemented')
         
