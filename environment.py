@@ -194,7 +194,7 @@ class CartPole(Environment):
         self.dt_base = 0.02
         self.sim_steps_per_t = 1
         self.dt = 0.02/self.sim_steps_per_t
-        self.max_steps = 20/self.dt_base + 10 # Not sure why the 10 here; just do 20 secs?
+        self.max_steps = int(20/self.dt_base) + 10 # Not sure why the 10 here; just do 20 secs?
         self.l = 0.5
         self.g = 9.8
         self.muc = 0.0005
