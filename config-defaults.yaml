@@ -3,16 +3,16 @@ env:
     value: cartpole
 rep: 
     desc: Non-parametric representation observed by the agent
-    value: discrete
+    value: fourier
 policy: 
     desc: Structure of h_theta, obs to action preferences
-    value: tabular
+    value: linear
 action_selection:
     desc: pi, h_theta to probabilities
     value: softmax
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: td
+    value: reinforce
 learning_rate:
     desc: Learning rate
     value: 0.1
@@ -51,4 +51,4 @@ expected:
     value: false
 rep_d:
     desc: Dimension of base
-    value: 4
+    value: 3

@@ -27,7 +27,8 @@ class FourierRep(StateRep):
 class DiscreteRep(StateRep):
     def __init__(self, bounds, d):
         self.bins = np.linspace(bounds[0], bounds[1], d).transpose()
-        self.rep_dim = (d,) * len(bounds)
+        self.rep_dim = (d+1,) * len(bounds[0])
+        print(self.rep_dim)
     def get_rep(self, obs):
         ret = tuple([np.digitize(obs[i], self.bins[i]) for i in range(len(obs))])
         return ret

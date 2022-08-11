@@ -168,7 +168,7 @@ class MountainCar(Environment):
             
     def reset(self):
         self.state = np.copy(self._initial_state)
-        self.step = 0
+        self.current_step = 0
         return
     
     def is_terminal(self):
@@ -229,7 +229,7 @@ class CartPole(Environment):
         return
     
     def is_terminal(self):
-        return 
+        return self.state[2] <= self.obs_bounds[0][2] or self.state[2] >= self.obs_bounds[1][2]
     
     def get_observation(self):
         return self.state

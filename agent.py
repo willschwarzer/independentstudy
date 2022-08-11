@@ -15,7 +15,7 @@ class Agent():
         return self.pi(self.h(theta, obs))
     
     
-class TD(Agent):
+class SARSAQ(Agent):
     def __init__(self, theta, h, pi, gamma, lr, on_policy, expected, n, lambduh):
         super(TD, self).__init__(theta, h, pi, gamma, lr)
         # on_policy: indicates q vs sarsa
@@ -69,15 +69,25 @@ class TD(Agent):
     def __update__(self, qp):
         with torch.no_grad():
             delta = self.rt + self.gamma*qp - self.h(self.theta, self.st)[self.at]
+            print(delta)
             self.theta.grad = -delta*self.trace
             self.optim.step()
             self.optim.zero_grad()
             self.trace *= self.lambduh*self.gamma
             
     def reset(self):
-        # print(self.theta)
+        print("reset")
         self.trace = torch.zeros_like(self.theta)
         self.step = 0
+        
+class _TD():
+    def __init__(self, theta, h, gamma, optim):
+        self.theta = theta
+        self.h = h
+        self.gamma = gamma
+        self.optim = optim
+        
+    def update(self, obs, r, done):
         
     
 class REINFORCE(Agent):
@@ -120,6 +130,7 @@ class REINFORCE(Agent):
         return
     
     def reset(self):
+        print(self.theta)
         self.trace = torch.zeros_like(self.theta)
         self.step = 0
     
@@ -147,9 +158,11 @@ def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_
         optim = torch.optim.Adam([theta], lr=alg_hyperparams['lr'])
     
     if alg_name.lower() == 'td':
-        return TD(theta, h, pi, gamma, optim, alg_hyperparams['on_policy'], alg_hyperparams['expected'], alg_hyperparams['n'], alg_hyperparams['lambda'])
+        return SARSAQ(theta, h, pi, gamma, optim, alg_hyperparams['on_policy'], alg_hyperparams['expected'], alg_hyperparams['n'], alg_hyperparams['lambda'])
     elif alg_name.lower() == 'reinforce':
         return REINFORCE(theta, h, pi, gamma, optim, alg_hyperparams['discount_updates'], alg_hyperparams['online'])
+    elif (''.join([i for i in pi_name if i.isalpha()])).lower() in ('actorcritic', 'ac'):
+        return AC(theta, h, pi, gamma, optim, 
     else:
         raise NotImplementedError
         
@@ -167,6 +180,8 @@ def pi_epsilon_greedy(epsilon):
         probs = torch.zeros_like(preferences) + epsilon/len(preferences)
         # Check this line, also do equal argmax
         max_idxs = torch.where(preferences == preferences.max())[0]
+        if len(max_idxs) == 0:
+            print(preferences)
         probs[max_idxs] += (1-epsilon)/len(max_idxs)
         return probs
     return pi_epsilon_greedy_curried

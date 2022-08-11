@@ -17,6 +17,9 @@ from agent import new_agent
 # wandb inspiration from https://colab.research.google.com/drive/1lZT-t2eV96uDNftr7ojcvMyqamSabKh1?usp=sharing#scrollTo=vdzejSm81kwI, by Yash Kotadia
 
 @ray.remote
+def main_remote(args):
+    main(args)
+
 def main(args):
     # Might eventually want to move away from args to just configs?
     # TODO: standardize strings in config
@@ -120,13 +123,13 @@ if __name__ == "__main__":
             start = time.time()
             num_threads = min(psutil.cpu_count()-1, num_trials_remaining)
             ray.init(num_cpus=num_threads)
-            ray.get([main.remote(args) for i in range(num_threads)])
+            ray.get([main_remote.remote(args) for i in range(num_threads)])
             num_trials_remaining -= num_threads
             ray.shutdown()
             print("num trials remaining: ", num_trials_remaining)
             print("time taken: ", time.time()-start)
     else:
-        ray.get(main.remote(args))
+        main(args)
     
     
     # some_vars = {'var1': 3.7, 'var2': False, 'var3': 'yo'}
