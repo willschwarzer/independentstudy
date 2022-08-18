@@ -1,21 +1,21 @@
 env: 
     desc: Environment to train or test on
-    value: cartpole
+    value: gridworld
 rep: 
     desc: Non-parametric representation observed by the agent
-    value: fourier
+    value: identity
 policy: 
     desc: Structure of h_theta, obs to action preferences
-    value: linear
+    value: tabular
 action_selection:
     desc: pi, h_theta to probabilities
     value: softmax
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: reinforce
+    value: reinforcebaseline
 learning_rate:
     desc: Learning rate
-    value: 0.1
+    value: 0.005
 optimizer_name:
     desc: Optimization algorithm to use
     value: sgd
@@ -52,3 +52,9 @@ expected:
 rep_d:
     desc: Dimension of base
     value: 3
+critic_learning_rate:
+    value: 0.1
+critic_lambduh:
+    value: 0.
+critic_optim:
+    value: sgd

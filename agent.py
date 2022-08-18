@@ -81,22 +81,49 @@ class SARSAQ(Agent):
         self.step = 0
         
 class _TD():
-    def __init__(self, theta, h, gamma, optim):
+    def __init__(self, theta, h, gamma, optim, lambduh):
         self.theta = theta
         self.h = h
         self.gamma = gamma
         self.optim = optim
+        self.lambduh = lambduh
+        self.last_v = None
+        self.theta_grad = torch.zeros_like(theta) # As in other lambda methods,
+        # we can't accumulate in the actual tensor gradient because 
+        # we need to multiply the actual gradient by the td error
         
-    def update(self, obs, r, done):
+    def get_error_and_update(self, obs, r, done):
+        # what do we need for TD? Just reward and state, I think, and we store the previous state's value
+        # We need to get gradients, though, and right now we're calling it inside of a torch.no_grad()
+        # I think we can move that to just the optim step at the end
+        # I don't think we use done
+        assert self.theta.grad is not None
+        with torch.no_grad():
+            # We're currently calculating h of each obs twice. Can fix later
+            td_error = r + self.gamma*self.h(self.theta, obs) - self.last_v
+            self.theta.grad = -td_error * self.theta_grad
+            self.optim.step()
+            self.theta_grad *= self.lambduh*self.gamma
+        return td_error
+    
+    def get_value(self, obs):
+        assert bool(self.lambduh) == any(self.theta_grad)
+        value = self.h(self.theta, obs)
+        value.backward()
+        self.theta_grad += self.theta.grad
+        self.last_v = value
+        return value
         
     
 class REINFORCE(Agent):
-    def __init__(self, theta, h, pi, gamma, optim, discount_updates, online):
+    def __init__(self, theta, h, pi, gamma, optim, critic, discount_updates, online):
         super(REINFORCE, self).__init__(theta, h, pi, gamma, optim)
         self.discount_updates = discount_updates
         self.trace = torch.zeros_like(theta)
         self.theta_grad_accumulant = torch.zeros_like(theta)
         self.online = online
+        self.critic = critic
+        self.critic_value = None # Stores value of last state
         
     def get_action(self, obs):
         if self.theta.grad is not None:
@@ -106,6 +133,8 @@ class REINFORCE(Agent):
         log_action_prob = torch.log(action_probs[action])
         log_action_prob.backward()
         self.trace += self.theta.grad
+        if self.critic is not None:
+            self.critic_value = self.critic.get_value(obs)
         return action
     
 #     def __get_action_probs_log__(self, obs, theta):
@@ -115,14 +144,18 @@ class REINFORCE(Agent):
 #         return torch.log(__get_action_probs__(self, obs, theta))[action]
     
     def update(self, obs, r, done):
-        with torch.no_grad():
-            if not self.discount_updates:
-                self.theta_grad_accumulant = -r*self.trace
-                self.trace *= self.gamma
-            else:
-                self.theta_grad_accumulant = -r*(self.gamma**self.step)*self.trace
-
-            if self.online or done:
+        if not self.discount_updates:
+            self.theta_grad_accumulant += -r*self.trace
+            if self.critic is not None:
+                self.theta_grad_accumulant += self.critic_value*self.theta_grad
+                self.critic.get_error_and_update(obs, r, done)
+            self.trace *= self.gamma
+        else:
+            if self.critic is not None:
+                raise NotImplementedError("need to implement baseline for this")
+            self.theta_grad_accumulant += -r*(self.gamma**self.step)*self.trace
+        if self.online or done:
+            with torch.no_grad():
                 self.theta.grad = torch.clone(self.theta_grad_accumulant)
                 self.optim.step()
                 self.theta_grad_accumulant *= 0
@@ -133,7 +166,38 @@ class REINFORCE(Agent):
         print(self.theta)
         self.trace = torch.zeros_like(self.theta)
         self.step = 0
+        
+
+class AC(Agent):
+    def __init__(self, theta, h, pi, gamma, optim, critic, lambduh):
+        super().__init__(theta, h, pi, gamma, optim)
+        self.critic = critic
+        self.critic_value = None
+        self.lambduh = lambduh
+        self.theta_grad = torch.zeros_like(theta)
+        
+    def get_action(self, obs):
+        # if self.theta.grad is not None:
+        self.optim.zero_grad()
+        action_probs = self.__get_action_probs__(obs, self.theta)
+        action = torch.multinomial(action_probs, 1).squeeze()
+        log_action_prob = torch.log(action_probs[action])
+        log_action_prob.backward()
+        self.theta_grad += self.theta.grad
+        if self.critic is not None:
+            self.critic_value = self.critic.get_value(obs)
+        return action
     
+    def update(self, obs, r, done):
+        with torch.no_grad():
+            td_error = self.critic.get_error_and_update(obs, r, done)
+            self.theta.grad = td_error*self.theta_grad
+            self.optim.step()
+            self.theta_grad *= self.lambduh*self.gamma
+        self.step += 1
+        return
+            
+        
 def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_hyperparams, alg_hyperparams):
     if policy_name.lower() == 'tabular':
         h = h_tabular
@@ -156,13 +220,32 @@ def new_agent(policy_name, pi_name, alg_name, optim_name, gamma, theta_dims, pi_
         optim = torch.optim.SGD([theta], lr=alg_hyperparams['lr'])
     elif optim_name.lower() == 'adam':
         optim = torch.optim.Adam([theta], lr=alg_hyperparams['lr'])
+        
+    if 'baseline' in alg_name.lower() or 'critic' in alg_name.lower() or alg_name.lower() == 'ac':
+        if alg_hyperparams['critic'].lower() == 'tabular':
+            h_critic = h_tabular
+            theta_critic = torch.zeros((*theta_dims['input']), dtype=float, requires_grad=True)
+        elif alg_hyperparams['critic'].lower() == 'linear':
+            h_critic = h_linear
+            theta_critic = torch.zeros((theta_dims['input']), dtype=float, requires_grad=True)
+        else:
+            raise NotImplementedError
+            
+        if optim.lower() == 'sgd':
+            optim_critic = torch.optim.SGD([theta_critic], lr=alg_hyperparams['critic_lr'])
+        elif optim_name.lower() == 'adam':
+            optim_critic = torch.optim.Adam([theta_critic], lr=alg_hyperparams['critic_lr'])
+            
+        critic = TD(theta_critic, h_critic, gamma, optim_critic, alg_hyperparams['critic_lambduh'])
+    else:
+        critic = None
     
     if alg_name.lower() == 'td':
         return SARSAQ(theta, h, pi, gamma, optim, alg_hyperparams['on_policy'], alg_hyperparams['expected'], alg_hyperparams['n'], alg_hyperparams['lambda'])
-    elif alg_name.lower() == 'reinforce':
-        return REINFORCE(theta, h, pi, gamma, optim, alg_hyperparams['discount_updates'], alg_hyperparams['online'])
+    elif 'reinforce' in alg_name.lower():
+        return REINFORCE(theta, h, pi, gamma, optim, critic, alg_hyperparams['discount_updates'], alg_hyperparams['online'])
     elif (''.join([i for i in pi_name if i.isalpha()])).lower() in ('actorcritic', 'ac'):
-        return AC(theta, h, pi, gamma, optim, 
+        return AC(theta, h, pi, gamma, optim, critic)
     else:
         raise NotImplementedError
         

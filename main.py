@@ -32,13 +32,17 @@ def main(args):
     env = new_env(wandb.config.env)
     rep_hyperparams = {'d': wandb.config.rep_d}
     rep_fn = new_rep_fn(wandb.config.rep, env.obs_dim, env.obs_bounds, rep_hyperparams)
+    # XXX Currently just using same policy type for actor and critic
     alg_hyperparams = {'lr': wandb.config.learning_rate, 
             'n': wandb.config.n_step_n, 
             'lambda': wandb.config.lambduh, 
             'discount_updates': wandb.config.discount_updates,
             'online': wandb.config.online,
             'on_policy': wandb.config.on_policy,
-            'expected': wandb.config.expected} # TODO add ANN params as well
+            'expected': wandb.config.expected,
+            'critic': wandb.config.policy,
+            'critic_lr': wandb.config.critic_learning_rate,
+            'critic_optim': wandb.config.critic_optim} # TODO add ANN params as well
     pi_hyperparams = {'temperature': wandb.config.softmax_temp, 'epsilon': wandb.config.epsilon}
     # ANN params mean that these aren't just algorithm hyperparameters... they're also for theta/h, and gradient descent
     # Which also raises the question of how we'll treat h in the case of ANNs - the forward function on a Flax net or whatever?
