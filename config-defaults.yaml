@@ -1,9 +1,9 @@
 env: 
     desc: Environment to train or test on
-    value: gridworld
+    value: mountaincar
 rep: 
     desc: Non-parametric representation observed by the agent
-    value: identity
+    value: discrete
 policy: 
     desc: Structure of h_theta, obs to action preferences
     value: tabular
@@ -12,7 +12,7 @@ action_selection:
     value: softmax
 learning_rule:
     desc: Rule for updating h_theta based on trajectory so far
-    value: reinforcebaseline
+    value: ac
 learning_rate:
     desc: Learning rate
     value: 0.005
@@ -27,7 +27,7 @@ n_step_n:
     value: 1
 lambduh:
     desc: Value of lambda in SARSA/Q lambda
-    value: 0.
+    value: 0.75
 epsilon:
     desc: Epsilon in epsilon-greedy
     value: 0.05
@@ -51,10 +51,10 @@ expected:
     value: false
 rep_d:
     desc: Dimension of base
-    value: 3
+    value: 5
 critic_learning_rate:
     value: 0.1
 critic_lambduh:
-    value: 0.
+    value: 0.75
 critic_optim:
     value: sgd

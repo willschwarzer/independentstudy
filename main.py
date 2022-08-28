@@ -35,14 +35,15 @@ def main(args):
     # XXX Currently just using same policy type for actor and critic
     alg_hyperparams = {'lr': wandb.config.learning_rate, 
             'n': wandb.config.n_step_n, 
-            'lambda': wandb.config.lambduh, 
+            'lambduh': wandb.config.lambduh, 
             'discount_updates': wandb.config.discount_updates,
             'online': wandb.config.online,
             'on_policy': wandb.config.on_policy,
             'expected': wandb.config.expected,
             'critic': wandb.config.policy,
             'critic_lr': wandb.config.critic_learning_rate,
-            'critic_optim': wandb.config.critic_optim} # TODO add ANN params as well
+            'critic_optim': wandb.config.critic_optim,
+            'critic_lambduh': wandb.config.critic_lambduh} # TODO add ANN params as well
     pi_hyperparams = {'temperature': wandb.config.softmax_temp, 'epsilon': wandb.config.epsilon}
     # ANN params mean that these aren't just algorithm hyperparameters... they're also for theta/h, and gradient descent
     # Which also raises the question of how we'll treat h in the case of ANNs - the forward function on a Flax net or whatever?
@@ -111,8 +112,8 @@ def train(agent, rep_fn, env):
     for step in range(max_steps):
         action = agent.get_action(rep)
         obs, reward, done = env.step(action)
-        agent.update(obs, reward, done)
         rep = rep_fn.get_rep(obs)
+        agent.update(rep, reward, done)
         ret += (env.gamma**step)*reward
         if done:
             return ret, step
